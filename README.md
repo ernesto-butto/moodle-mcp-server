@@ -49,12 +49,16 @@ An enhanced [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) ser
 All course-specific tools accept an optional `courseId` parameter:
 
 ```
+"List all my Moodle courses"    → list_courses()
 "List students in course 5"     → get_students(courseId=5)
-"Show assignments"              → get_assignments() // uses default
+"Show assignments"              → get_assignments() // uses default if configured
 "Quizzes in course 10"          → get_quizzes(courseId=10)
 ```
 
-If no `courseId` is provided, the default from `MOODLE_COURSE_ID` environment variable is used.
+**How it works:**
+- If you specify `courseId` in the request, that course is used
+- If you don't specify `courseId`, the default from `MOODLE_COURSE_ID` is used (if configured)
+- `MOODLE_COURSE_ID` is **optional** — you can omit it entirely and always specify courses dynamically
 
 ## 📋 Requirements
 
@@ -85,10 +89,19 @@ npm run build
 
 ## ⚙️ Configuration
 
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MOODLE_API_URL` | ✅ Yes | Your Moodle web service endpoint |
+| `MOODLE_API_TOKEN` | ✅ Yes | API token for authentication |
+| `MOODLE_COURSE_ID` | ❌ No | Default course ID (optional — use `list_courses` to discover courses dynamically) |
+
 ### For Claude Code (Linux/WSL)
 
 Add to your project's `.mcp.json`:
 
+**Option A: With default course** (simpler for single-course use)
 ```json
 {
   "mcpServers": {
@@ -100,6 +113,23 @@ Add to your project's `.mcp.json`:
         "MOODLE_API_URL": "https://your-moodle.com/webservice/rest/server.php",
         "MOODLE_API_TOKEN": "${MOODLE_API_TOKEN}",
         "MOODLE_COURSE_ID": "4"
+      }
+    }
+  }
+}
+```
+
+**Option B: Without default course** (multi-course workflows)
+```json
+{
+  "mcpServers": {
+    "moodle": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/path/to/moodle-mcp-server/build/index.js"],
+      "env": {
+        "MOODLE_API_URL": "https://your-moodle.com/webservice/rest/server.php",
+        "MOODLE_API_TOKEN": "${MOODLE_API_TOKEN}"
       }
     }
   }
@@ -133,6 +163,8 @@ Edit `%APPDATA%\Claude\claude_desktop_config.json`:
 }
 ```
 
+> 💡 **Tip:** You can omit `MOODLE_COURSE_ID` entirely if you prefer to always specify courses dynamically using `list_courses` first.
+
 ### For Claude Desktop (macOS)
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
@@ -152,6 +184,8 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
+
+> 💡 **Tip:** You can omit `MOODLE_COURSE_ID` entirely if you prefer to always specify courses dynamically using `list_courses` first.
 
 ## 🔑 Getting a Moodle API Token
 
@@ -180,6 +214,12 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 4. Create a token for this service
 
 ### Finding Your Course ID
+
+**Option 1: Use `list_courses`** (Recommended)
+
+Simply ask Claude: *"List all my Moodle courses"* — the server will return all courses with their IDs.
+
+**Option 2: From URL**
 
 Navigate to your course in Moodle and look at the URL:
 ```
