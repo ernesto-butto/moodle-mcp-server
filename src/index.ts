@@ -9,12 +9,12 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import axios from 'axios';
 
-// Configuración de variables de entorno
+// Environment variable configuration
 const MOODLE_API_URL = process.env.MOODLE_API_URL;
 const MOODLE_API_TOKEN = process.env.MOODLE_API_TOKEN;
-const MOODLE_COURSE_ID = process.env.MOODLE_COURSE_ID;
+const DEFAULT_COURSE_ID = process.env.MOODLE_COURSE_ID; // Now optional, used as default
 
-// Verificar que las variables de entorno estén definidas
+// Verify required environment variables
 if (!MOODLE_API_URL) {
   throw new Error('MOODLE_API_URL environment variable is required');
 }
@@ -23,17 +23,23 @@ if (!MOODLE_API_TOKEN) {
   throw new Error('MOODLE_API_TOKEN environment variable is required');
 }
 
-if (!MOODLE_COURSE_ID) {
-  throw new Error('MOODLE_COURSE_ID environment variable is required');
-}
+// Note: MOODLE_COURSE_ID is now optional - can be passed per-request
 
-// Interfaces para los tipos de datos
+// Data type interfaces
 interface Student {
   id: number;
   username: string;
   firstname: string;
   lastname: string;
   email: string;
+}
+
+interface Course {
+  id: number;
+  shortname: string;
+  fullname: string;
+  enrolledusercount: number;
+  visible: boolean;
 }
 
 interface Assignment {
@@ -84,7 +90,7 @@ interface SubmissionContent {
 
 interface QuizGradeResponse {
   hasgrade: boolean;
-  grade?: string;  // Este campo solo está presente si hasgrade es true
+  grade?: string;
 }
 
 class MoodleMcpServer {
@@ -95,7 +101,7 @@ class MoodleMcpServer {
     this.server = new Server(
       {
         name: 'moodle-mcp-server',
-        version: '0.1.0',
+        version: '0.2.0', // Updated version for multi-course support
       },
       {
         capabilities: {
@@ -113,7 +119,7 @@ class MoodleMcpServer {
     });
 
     this.setupToolHandlers();
-    
+
     // Error handling
     this.server.onerror = (error) => console.error('[MCP Error]', error);
     process.on('SIGINT', async () => {
@@ -122,49 +128,109 @@ class MoodleMcpServer {
     });
   }
 
+  /**
+   * Helper to get courseId from args or fall back to default
+   */
+  private getCourseId(args: any): string {
+    if (args?.courseId) {
+      return String(args.courseId);
+    }
+    if (DEFAULT_COURSE_ID) {
+      return DEFAULT_COURSE_ID;
+    }
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      'courseId is required. Either pass it as a parameter or set MOODLE_COURSE_ID environment variable.'
+    );
+  }
+
   private setupToolHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
+        // NEW: List all courses the user has access to
         {
-          name: 'get_students',
-          description: 'Obtiene la lista de estudiantes inscritos en el curso configurado',
+          name: 'list_courses',
+          description: 'Lists all courses the authenticated user has access to. Use this to discover available course IDs before querying specific courses.',
           inputSchema: {
             type: 'object',
             properties: {},
+            required: [],
+          },
+        },
+        // NEW: Get course contents (sections/units)
+        {
+          name: 'get_course_contents',
+          description: 'Gets the contents (sections, modules, activities) of a specific course. Useful for seeing the course structure.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              courseId: {
+                type: 'number',
+                description: 'ID of the course. If not provided, uses the default configured course.',
+              },
+            },
+            required: [],
+          },
+        },
+        {
+          name: 'get_students',
+          description: 'Gets the list of students enrolled in a course.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              courseId: {
+                type: 'number',
+                description: 'ID of the course. If not provided, uses the default configured course.',
+              },
+            },
             required: [],
           },
         },
         {
           name: 'get_assignments',
-          description: 'Obtiene la lista de tareas asignadas en el curso configurado',
+          description: 'Gets the list of assignments in a course.',
           inputSchema: {
             type: 'object',
-            properties: {},
+            properties: {
+              courseId: {
+                type: 'number',
+                description: 'ID of the course. If not provided, uses the default configured course.',
+              },
+            },
             required: [],
           },
         },
         {
           name: 'get_quizzes',
-          description: 'Obtiene la lista de quizzes en el curso configurado',
+          description: 'Gets the list of quizzes in a course.',
           inputSchema: {
             type: 'object',
-            properties: {},
+            properties: {
+              courseId: {
+                type: 'number',
+                description: 'ID of the course. If not provided, uses the default configured course.',
+              },
+            },
             required: [],
           },
         },
         {
           name: 'get_submissions',
-          description: 'Obtiene las entregas de tareas en el curso configurado',
+          description: 'Gets assignment submissions for a course.',
           inputSchema: {
             type: 'object',
             properties: {
+              courseId: {
+                type: 'number',
+                description: 'ID of the course. If not provided, uses the default configured course.',
+              },
               studentId: {
                 type: 'number',
-                description: 'ID opcional del estudiante. Si no se proporciona, se devolverán entregas de todos los estudiantes',
+                description: 'Optional student ID. If not provided, returns submissions from all students.',
               },
               assignmentId: {
                 type: 'number',
-                description: 'ID opcional de la tarea. Si no se proporciona, se devolverán todas las entregas',
+                description: 'Optional assignment ID. If not provided, returns all submissions.',
               },
             },
             required: [],
@@ -172,25 +238,25 @@ class MoodleMcpServer {
         },
         {
           name: 'provide_feedback',
-          description: 'Proporciona feedback sobre una tarea entregada por un estudiante',
+          description: 'Provides feedback and grade for a student assignment submission.',
           inputSchema: {
             type: 'object',
             properties: {
               studentId: {
                 type: 'number',
-                description: 'ID del estudiante',
+                description: 'ID of the student',
               },
               assignmentId: {
                 type: 'number',
-                description: 'ID de la tarea',
+                description: 'ID of the assignment',
               },
               grade: {
                 type: 'number',
-                description: 'Calificación numérica a asignar',
+                description: 'Numeric grade to assign',
               },
               feedback: {
                 type: 'string',
-                description: 'Texto del feedback a proporcionar',
+                description: 'Feedback text to provide',
               },
             },
             required: ['studentId', 'assignmentId', 'feedback'],
@@ -198,17 +264,17 @@ class MoodleMcpServer {
         },
         {
           name: 'get_submission_content',
-          description: 'Obtiene el contenido detallado de una entrega específica, incluyendo texto y archivos adjuntos',
+          description: 'Gets the detailed content of a specific submission, including text and attached files.',
           inputSchema: {
             type: 'object',
             properties: {
               studentId: {
                 type: 'number',
-                description: 'ID del estudiante',
+                description: 'ID of the student',
               },
               assignmentId: {
                 type: 'number',
-                description: 'ID de la tarea',
+                description: 'ID of the assignment',
               },
             },
             required: ['studentId', 'assignmentId'],
@@ -216,17 +282,17 @@ class MoodleMcpServer {
         },
         {
           name: 'get_quiz_grade',
-          description: 'Obtiene la calificación de un estudiante en un quiz específico',
+          description: 'Gets a student\'s grade for a specific quiz.',
           inputSchema: {
             type: 'object',
             properties: {
               studentId: {
                 type: 'number',
-                description: 'ID del estudiante',
+                description: 'ID of the student',
               },
               quizId: {
                 type: 'number',
-                description: 'ID del quiz',
+                description: 'ID of the quiz',
               },
             },
             required: ['studentId', 'quizId'],
@@ -237,15 +303,19 @@ class MoodleMcpServer {
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       console.error(`[Tool] Executing tool: ${request.params.name}`);
-      
+
       try {
         switch (request.params.name) {
+          case 'list_courses':
+            return await this.listCourses();
+          case 'get_course_contents':
+            return await this.getCourseContents(request.params.arguments);
           case 'get_students':
-            return await this.getStudents();
+            return await this.getStudents(request.params.arguments);
           case 'get_assignments':
-            return await this.getAssignments();
+            return await this.getAssignments(request.params.arguments);
           case 'get_quizzes':
-            return await this.getQuizzes();
+            return await this.getQuizzes(request.params.arguments);
           case 'get_submissions':
             return await this.getSubmissions(request.params.arguments);
           case 'provide_feedback':
@@ -280,113 +350,214 @@ class MoodleMcpServer {
     });
   }
 
-  private async getStudents() {
-    console.error('[API] Requesting enrolled users');
-    
+  /**
+   * List all courses the authenticated user has access to
+   * Uses core_course_get_courses which returns all accessible courses
+   * (works for admins/teachers who have access via capabilities, not just enrollment)
+   */
+  private async listCourses() {
+    console.error('[API] Requesting all accessible courses');
+
+    const response = await this.axiosInstance.get('', {
+      params: {
+        wsfunction: 'core_course_get_courses',
+      },
+    });
+
+    // Filter out the site-level course (id=1) and format the response
+    const courses = response.data
+      .filter((course: any) => course.id !== 1) // Exclude site-level course
+      .map((course: any) => ({
+        id: course.id,
+        shortname: course.shortname,
+        fullname: course.fullname,
+        visible: course.visible === 1,
+        summary: course.summary ? course.summary.replace(/<[^>]*>/g, '').trim().substring(0, 200) : '',
+        categoryid: course.categoryid,
+      }));
+
+    const defaultNote = DEFAULT_COURSE_ID
+      ? `\n\nDefault course ID: ${DEFAULT_COURSE_ID}`
+      : '\n\nNo default course ID configured. Pass courseId to other tools.';
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(courses, null, 2) + defaultNote,
+        },
+      ],
+    };
+  }
+
+  /**
+   * NEW: Get course contents (sections, modules, activities)
+   */
+  private async getCourseContents(args: any) {
+    const courseId = this.getCourseId(args);
+    console.error(`[API] Requesting course contents for course ${courseId}`);
+
+    const response = await this.axiosInstance.get('', {
+      params: {
+        wsfunction: 'core_course_get_contents',
+        courseid: courseId,
+      },
+    });
+
+    // Process the response to make it more readable
+    const sections = response.data.map((section: any) => ({
+      id: section.id,
+      name: section.name || `Section ${section.section}`,
+      summary: section.summary ? section.summary.replace(/<[^>]*>/g, '').trim() : '',
+      visible: section.visible === 1,
+      modules: section.modules?.map((mod: any) => ({
+        id: mod.id,
+        name: mod.name,
+        modname: mod.modname, // e.g., 'assign', 'quiz', 'forum', 'page'
+        visible: mod.visible === 1,
+        url: mod.url,
+      })) || [],
+    }));
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(sections, null, 2),
+        },
+      ],
+    };
+  }
+
+  private async getStudents(args: any) {
+    const courseId = this.getCourseId(args);
+    console.error(`[API] Requesting enrolled users for course ${courseId}`);
+
     const response = await this.axiosInstance.get('', {
       params: {
         wsfunction: 'core_enrol_get_enrolled_users',
-        courseid: MOODLE_COURSE_ID,
+        courseid: courseId,
       },
     });
 
     const students = response.data
-      .filter((user: any) => user.roles.some((role: any) => role.shortname === 'student'))
+      .filter((user: any) => user.roles?.some((role: any) => role.shortname === 'student'))
       .map((student: any) => ({
         id: student.id,
         username: student.username,
         firstname: student.firstname,
         lastname: student.lastname,
         email: student.email,
+        lastaccess: student.lastaccess ? new Date(student.lastaccess * 1000).toISOString() : null,
       }));
 
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(students, null, 2),
+          text: JSON.stringify({ courseId, students }, null, 2),
         },
       ],
     };
   }
 
-  private async getAssignments() {
-    console.error('[API] Requesting assignments');
-    
+  private async getAssignments(args: any) {
+    const courseId = this.getCourseId(args);
+    console.error(`[API] Requesting assignments for course ${courseId}`);
+
     const response = await this.axiosInstance.get('', {
       params: {
         wsfunction: 'mod_assign_get_assignments',
-        courseids: [MOODLE_COURSE_ID],
+        courseids: [courseId],
       },
     });
 
-    const assignments = response.data.courses[0]?.assignments || [];
-    
+    const courseData = response.data.courses?.find((c: any) => String(c.id) === courseId);
+    const assignments = courseData?.assignments || [];
+
+    // Format dates for readability
+    const formattedAssignments = assignments.map((a: any) => ({
+      ...a,
+      duedate: a.duedate ? new Date(a.duedate * 1000).toISOString() : null,
+      allowsubmissionsfromdate: a.allowsubmissionsfromdate ? new Date(a.allowsubmissionsfromdate * 1000).toISOString() : null,
+      cutoffdate: a.cutoffdate ? new Date(a.cutoffdate * 1000).toISOString() : null,
+    }));
+
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(assignments, null, 2),
+          text: JSON.stringify({ courseId, assignments: formattedAssignments }, null, 2),
         },
       ],
     };
   }
 
-  private async getQuizzes() {
-    console.error('[API] Requesting quizzes');
-    
+  private async getQuizzes(args: any) {
+    const courseId = this.getCourseId(args);
+    console.error(`[API] Requesting quizzes for course ${courseId}`);
+
     const response = await this.axiosInstance.get('', {
       params: {
         wsfunction: 'mod_quiz_get_quizzes_by_courses',
-        courseids: [MOODLE_COURSE_ID],
+        courseids: [courseId],
       },
     });
 
     const quizzes = response.data.quizzes || [];
-    
+
+    // Format dates for readability
+    const formattedQuizzes = quizzes.map((q: any) => ({
+      ...q,
+      timeopen: q.timeopen ? new Date(q.timeopen * 1000).toISOString() : null,
+      timeclose: q.timeclose ? new Date(q.timeclose * 1000).toISOString() : null,
+    }));
+
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(quizzes, null, 2),
+          text: JSON.stringify({ courseId, quizzes: formattedQuizzes }, null, 2),
         },
       ],
     };
   }
 
   private async getSubmissions(args: any) {
-    const studentId = args.studentId;
-    const assignmentId = args.assignmentId;
-    
-    console.error(`[API] Requesting submissions${studentId ? ` for student ${studentId}` : ''}`);
-    
-    // Primero obtenemos todas las tareas
+    const courseId = this.getCourseId(args);
+    const studentId = args?.studentId;
+    const assignmentId = args?.assignmentId;
+
+    console.error(`[API] Requesting submissions for course ${courseId}${studentId ? ` for student ${studentId}` : ''}`);
+
+    // First get all assignments for the course
     const assignmentsResponse = await this.axiosInstance.get('', {
       params: {
         wsfunction: 'mod_assign_get_assignments',
-        courseids: [MOODLE_COURSE_ID],
+        courseids: [courseId],
       },
     });
 
-    const assignments = assignmentsResponse.data.courses[0]?.assignments || [];
-    
-    // Si se especificó un ID de tarea, filtramos solo esa tarea
+    const courseData = assignmentsResponse.data.courses?.find((c: any) => String(c.id) === courseId);
+    const assignments = courseData?.assignments || [];
+
+    // Filter to specific assignment if provided
     const targetAssignments = assignmentId
       ? assignments.filter((a: any) => a.id === assignmentId)
       : assignments;
-    
+
     if (targetAssignments.length === 0) {
       return {
         content: [
           {
             type: 'text',
-            text: 'No se encontraron tareas para el criterio especificado.',
+            text: 'No assignments found for the specified criteria.',
           },
         ],
       };
     }
 
-    // Para cada tarea, obtenemos todas las entregas
+    // Get submissions for each assignment
     const submissionsPromises = targetAssignments.map(async (assignment: any) => {
       const submissionsResponse = await this.axiosInstance.get('', {
         params: {
@@ -396,8 +567,8 @@ class MoodleMcpServer {
       });
 
       const submissions = submissionsResponse.data.assignments[0]?.submissions || [];
-      
-      // Obtenemos las calificaciones para esta tarea
+
+      // Get grades for this assignment
       const gradesResponse = await this.axiosInstance.get('', {
         params: {
           wsfunction: 'mod_assign_get_grades',
@@ -406,38 +577,38 @@ class MoodleMcpServer {
       });
 
       const grades = gradesResponse.data.assignments[0]?.grades || [];
-      
-      // Si se especificó un ID de estudiante, filtramos solo sus entregas
+
+      // Filter by student if specified
       const targetSubmissions = studentId
         ? submissions.filter((s: any) => s.userid === studentId)
         : submissions;
-      
-      // Procesamos cada entrega
+
+      // Process each submission
       const processedSubmissions = targetSubmissions.map((submission: any) => {
         const studentGrade = grades.find((g: any) => g.userid === submission.userid);
-        
+
         return {
           userid: submission.userid,
           status: submission.status,
           timemodified: new Date(submission.timemodified * 1000).toISOString(),
-          grade: studentGrade ? studentGrade.grade : 'No calificado',
+          grade: studentGrade ? studentGrade.grade : 'Not graded',
         };
       });
-      
+
       return {
         assignment: assignment.name,
         assignmentId: assignment.id,
-        submissions: processedSubmissions.length > 0 ? processedSubmissions : 'No hay entregas',
+        submissions: processedSubmissions.length > 0 ? processedSubmissions : 'No submissions',
       };
     });
 
     const results = await Promise.all(submissionsPromises);
-    
+
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(results, null, 2),
+          text: JSON.stringify({ courseId, results }, null, 2),
         },
       ],
     };
@@ -452,21 +623,21 @@ class MoodleMcpServer {
     }
 
     console.error(`[API] Providing feedback for student ${args.studentId} on assignment ${args.assignmentId}`);
-    
+
     const response = await this.axiosInstance.get('', {
       params: {
         wsfunction: 'mod_assign_save_grade',
         assignmentid: args.assignmentId,
         userid: args.studentId,
         grade: args.grade || 0,
-        attemptnumber: -1, // Último intento
+        attemptnumber: -1, // Latest attempt
         addattempt: 0,
         workflowstate: 'released',
         applytoall: 0,
         plugindata: {
           assignfeedbackcomments_editor: {
             text: args.feedback,
-            format: 1, // Formato HTML
+            format: 1, // HTML format
           },
         },
       },
@@ -476,7 +647,7 @@ class MoodleMcpServer {
       content: [
         {
           type: 'text',
-          text: `Feedback proporcionado correctamente para el estudiante ${args.studentId} en la tarea ${args.assignmentId}.`,
+          text: `Feedback successfully provided for student ${args.studentId} on assignment ${args.assignmentId}.`,
         },
       ],
     };
@@ -491,9 +662,8 @@ class MoodleMcpServer {
     }
 
     console.error(`[API] Requesting submission content for student ${args.studentId} on assignment ${args.assignmentId}`);
-    
+
     try {
-      // Utilizamos la función mod_assign_get_submission_status para obtener el contenido detallado
       const response = await this.axiosInstance.get('', {
         params: {
           wsfunction: 'mod_assign_get_submission_status',
@@ -502,24 +672,20 @@ class MoodleMcpServer {
         },
       });
 
-      // Procesamos la respuesta para extraer el contenido relevante
       const submissionData = response.data.submission || {};
       const plugins = response.data.lastattempt?.submission?.plugins || [];
-      
-      // Extraemos el texto de la entrega y los archivos adjuntos
+
       let submissionText = '';
-      const files = [];
-      
+      const files: any[] = [];
+
       for (const plugin of plugins) {
-        // Procesamos el plugin de texto en línea
         if (plugin.type === 'onlinetext') {
           const textField = plugin.editorfields?.find((field: any) => field.name === 'onlinetext');
           if (textField) {
             submissionText = textField.text || '';
           }
         }
-        
-        // Procesamos el plugin de archivos
+
         if (plugin.type === 'file') {
           const filesList = plugin.fileareas?.find((area: any) => area.area === 'submission_files');
           if (filesList && filesList.files) {
@@ -534,8 +700,7 @@ class MoodleMcpServer {
           }
         }
       }
-      
-      // Construimos el objeto de respuesta
+
       const submissionContent = {
         assignment: args.assignmentId,
         userid: args.studentId,
@@ -553,7 +718,7 @@ class MoodleMcpServer {
         ],
         timemodified: submissionData.timemodified || 0,
       };
-      
+
       return {
         content: [
           {
@@ -569,7 +734,7 @@ class MoodleMcpServer {
           content: [
             {
               type: 'text',
-              text: `Error al obtener el contenido de la entrega: ${
+              text: `Error getting submission content: ${
                 error.response?.data?.message || error.message
               }`,
             },
@@ -590,7 +755,7 @@ class MoodleMcpServer {
     }
 
     console.error(`[API] Requesting quiz grade for student ${args.studentId} on quiz ${args.quizId}`);
-    
+
     try {
       const response = await this.axiosInstance.get('', {
         params: {
@@ -600,14 +765,13 @@ class MoodleMcpServer {
         },
       });
 
-      // Procesamos la respuesta
       const result = {
         quizId: args.quizId,
         studentId: args.studentId,
         hasGrade: response.data.hasgrade,
-        grade: response.data.hasgrade ? response.data.grade : 'No calificado',
+        grade: response.data.hasgrade ? response.data.grade : 'Not graded',
       };
-      
+
       return {
         content: [
           {
@@ -623,7 +787,7 @@ class MoodleMcpServer {
           content: [
             {
               type: 'text',
-              text: `Error al obtener la calificación del quiz: ${
+              text: `Error getting quiz grade: ${
                 error.response?.data?.message || error.message
               }`,
             },
@@ -638,7 +802,7 @@ class MoodleMcpServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('Moodle MCP server running on stdio');
+    console.error('Moodle MCP server running on stdio (multi-course support enabled)');
   }
 }
 

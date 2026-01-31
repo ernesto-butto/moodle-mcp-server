@@ -1,9 +1,25 @@
 {
   "name": "moodle-mcp-server",
-  "version": "0.1.0",
-  "description": "Moddle MCP server",
-  "private": true,
+  "version": "0.2.0",
+  "description": "MCP server for Moodle LMS with multi-course support - enables AI assistants to manage courses, students, assignments, and quizzes",
+  "private": false,
   "type": "module",
+  "author": "Ernesto Butto",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ernesto-butto/moodle-mcp-server.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "moodle",
+    "lms",
+    "education",
+    "ai",
+    "claude",
+    "anthropic"
+  ],
   "bin": {
     "moodle-mcp-server": "./build/index.js"
   },

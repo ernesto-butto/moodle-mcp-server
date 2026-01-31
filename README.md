@@ -1,144 +1,237 @@
-# Moodle MCP Server
+# Moodle MCP Server (Multi-Course Edition)
 
-An MCP (Model Context Protocol) server that enables LLMs to interact with the Moodle platform to manage courses, students, assignments, and quizzes.
+[![MCP](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io/)
+[![Node.js](https://img.shields.io/badge/Node.js-v14+-green)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Features
+An enhanced [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI assistants like Claude to interact with Moodle LMS. **This fork adds multi-course support**, allowing you to manage multiple courses from a single MCP server.
 
-### Student Management Tools
-- `list_students` - Retrieves the list of students enrolled in the course
-  - Displays ID, name, email, and last access time for each student
+> 🍴 This is an enhanced fork of [peancor/moodle-mcp-server](https://github.com/peancor/moodle-mcp-server) with significant improvements.
 
-### Assignment Management Tools
-- `get_assignments` - Retrieves all available assignments in the course
-  - Includes information such as ID, name, description, due date, and maximum grade
-- `get_student_submissions` - Examines a student's submissions for a specific assignment
-  - Requires the assignment ID and optionally the student ID
-- `provide_assignment_feedback` - Provides grades and comments for a student's submission
-  - Requires student ID, assignment ID, grade, and feedback comment
+## ✨ What's New in This Fork
 
-### Quiz Management Tools
-- `get_quizzes` - Retrieves all available quizzes in the course
-  - Includes information such as ID, name, description, opening/closing dates, and maximum grade
-- `get_quiz_attempts` - Examines a student's attempts on a specific quiz
-  - Requires the quiz ID and optionally the student ID
-- `provide_quiz_feedback` - Provides comments for a quiz attempt
-  - Requires the attempt ID and feedback comment
+| Feature | Original | This Fork |
+|---------|----------|-----------|
+| Multi-course support | ❌ Single course only | ✅ Dynamic `courseId` parameter |
+| List all courses | ❌ Not available | ✅ `list_courses` tool |
+| View course contents | ❌ Not available | ✅ `get_course_contents` tool |
+| Admin/Teacher access | ❌ Enrollment-based only | ✅ Works with capability-based access |
 
-## Requirements
+## 🛠️ Available Tools
 
-- Node.js (v14 or higher)
-- Moodle API token with appropriate permissions
-- Moodle course ID
+### Course Discovery
+| Tool | Description |
+|------|-------------|
+| `list_courses` | Lists all courses you have access to with IDs, names, and summaries |
+| `get_course_contents` | Gets course sections, modules, and activities (course structure) |
 
-## Installation
+### Student Management
+| Tool | Description |
+|------|-------------|
+| `get_students` | Retrieves enrolled students with ID, name, email, last access |
 
-1. Clone this repository:
+### Assignment Management
+| Tool | Description |
+|------|-------------|
+| `get_assignments` | Lists all assignments with due dates and max grades |
+| `get_submissions` | Views student submissions for assignments |
+| `get_submission_content` | Gets detailed submission content including files |
+| `provide_feedback` | Grades assignments and provides feedback |
+
+### Quiz Management
+| Tool | Description |
+|------|-------------|
+| `get_quizzes` | Lists all quizzes in a course |
+| `get_quiz_grade` | Gets a student's grade for a specific quiz |
+
+### Multi-Course Support
+
+All course-specific tools accept an optional `courseId` parameter:
+
+```
+"List students in course 5"     → get_students(courseId=5)
+"Show assignments"              → get_assignments() // uses default
+"Quizzes in course 10"          → get_quizzes(courseId=10)
+```
+
+If no `courseId` is provided, the default from `MOODLE_COURSE_ID` environment variable is used.
+
+## 📋 Requirements
+
+- **Node.js** v14 or higher
+- **Moodle API token** with appropriate permissions
+- **Moodle** instance with web services enabled
+
+## 🚀 Installation
+
+### 1. Clone this repository
+
 ```bash
-git clone https://github.com/your-username/moodle-mcp-server.git
+git clone https://github.com/ernesto-butto/moodle-mcp-server.git
 cd moodle-mcp-server
 ```
 
-2. Install dependencies:
+### 2. Install dependencies
+
 ```bash
 npm install
 ```
 
-3. Create a `.env` file with the following configuration:
-```
-MOODLE_API_URL=https://your-moodle.com/webservice/rest/server.php
-MOODLE_API_TOKEN=your_api_token
-MOODLE_COURSE_ID=1  # Replace with your course ID
-```
+### 3. Build the server
 
-4. Build the server:
 ```bash
 npm run build
 ```
 
-## Usage with Claude
+## ⚙️ Configuration
 
-To use with Claude Desktop, add the server configuration:
+### For Claude Code (Linux/WSL)
 
-On MacOS: `~/Library/Application Support/Claude/claude_desktop_config.json`  
-On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+Add to your project's `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
-    "moodle-mcp-server": {
-      "command": "/path/to/node",
-      "args": [
-        "/path/to/moodle-mcp-server/build/index.js"
-      ],
+    "moodle": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/path/to/moodle-mcp-server/build/index.js"],
       "env": {
         "MOODLE_API_URL": "https://your-moodle.com/webservice/rest/server.php",
-        "MOODLE_API_TOKEN": "your_moodle_api_token",
-        "MOODLE_COURSE_ID": "your_course_id"
-      },
-      "disabled": false,
-      "autoApprove": []
+        "MOODLE_API_TOKEN": "${MOODLE_API_TOKEN}",
+        "MOODLE_COURSE_ID": "4"
+      }
     }
   }
 }
 ```
 
-For Windows users, the paths would use backslashes:
+Then set your token as an environment variable:
+
+```bash
+echo 'export MOODLE_API_TOKEN="your_token_here"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### For Claude Desktop (Windows)
+
+Edit `%APPDATA%\Claude\claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "moodle-mcp-server": {
-      "command": "C:\\path\\to\\node.exe",
-      "args": [
-        "C:\\path\\to\\moodle-mcp-server\\build\\index.js"
-      ],
+    "moodle": {
+      "command": "node",
+      "args": ["C:\\Users\\YourName\\moodle-mcp-server\\build\\index.js"],
       "env": {
         "MOODLE_API_URL": "https://your-moodle.com/webservice/rest/server.php",
-        "MOODLE_API_TOKEN": "your_moodle_api_token",
-        "MOODLE_COURSE_ID": "your_course_id"
-      },
-      "disabled": false,
-      "autoApprove": []
+        "MOODLE_API_TOKEN": "your_token_here",
+        "MOODLE_COURSE_ID": "4"
+      }
     }
   }
 }
 ```
 
-Once configured, Claude will be able to interact with your Moodle course to:
-- View the list of students and their submissions
-- Provide comments and grades for assignments
-- Examine quiz attempts and offer feedback
+### For Claude Desktop (macOS)
 
-## Development
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
-For development with auto-rebuild:
+```json
+{
+  "mcpServers": {
+    "moodle": {
+      "command": "node",
+      "args": ["/Users/YourName/moodle-mcp-server/build/index.js"],
+      "env": {
+        "MOODLE_API_URL": "https://your-moodle.com/webservice/rest/server.php",
+        "MOODLE_API_TOKEN": "your_token_here",
+        "MOODLE_COURSE_ID": "4"
+      }
+    }
+  }
+}
+```
+
+## 🔑 Getting a Moodle API Token
+
+### Option 1: Use Mobile Web Service (Easiest)
+
+1. Log in to Moodle as admin
+2. Go to **Site Administration → Server → Web services → External services**
+3. Ensure **"Moodle mobile web service"** is enabled
+4. Go to **Site Administration → Server → Web services → Manage tokens**
+5. Click **Create token**, select your user and the mobile web service
+6. Copy the token
+
+### Option 2: Create Custom Service (More Control)
+
+1. Go to **Site Administration → Server → Web services → External services**
+2. Click **Add** under Custom services
+3. Add these functions:
+   - `core_course_get_courses`
+   - `core_course_get_contents`
+   - `core_enrol_get_enrolled_users`
+   - `mod_assign_get_assignments`
+   - `mod_assign_get_submissions`
+   - `mod_assign_save_grade`
+   - `mod_quiz_get_quizzes_by_courses`
+   - `mod_quiz_get_user_best_grade`
+4. Create a token for this service
+
+### Finding Your Course ID
+
+Navigate to your course in Moodle and look at the URL:
+```
+https://your-moodle.com/course/view.php?id=4
+                                          ↑
+                                    Course ID
+```
+
+## 🧪 Development
+
+### Watch mode (auto-rebuild)
+
 ```bash
 npm run watch
 ```
 
-### Debugging
-
-MCP servers communicate through stdio, which can make debugging challenging. We recommend using the [MCP Inspector](https://github.com/modelcontextprotocol/inspector):
+### Debug with MCP Inspector
 
 ```bash
 npm run inspector
 ```
 
-The Inspector will provide a URL to access debugging tools in your browser.
+This opens a browser-based debugging interface.
 
-## Obtaining a Moodle API Token
+## 💡 Example Usage
 
-1. Log in to your Moodle site as an administrator
-2. Go to Site Administration > Plugins > Web Services > Manage tokens
-3. Create a new token with the necessary permissions to manage courses
-4. Copy the generated token and add it to your `.env` file
+Once configured, you can ask Claude:
 
-## Security
+- *"List all my Moodle courses"*
+- *"Show me the students in course 5"*
+- *"What assignments are in Unidad 3?"*
+- *"Get the course contents for course 10"*
+- *"Show quiz grades for student 42 in quiz 15"*
 
-- Never share your `.env` file or Moodle API token
-- Ensure the MCP server only has access to the courses it needs to manage
-- Use a token with the minimum necessary permissions
+## 🔒 Security Best Practices
 
-## License
+1. **Never commit tokens** - Use environment variables
+2. **Use dedicated accounts** - Create a Moodle user for API access
+3. **Minimal permissions** - Only enable required web service functions
+4. **Rotate tokens** - Regenerate tokens periodically
+5. **Set expiration** - Use token expiration dates in Moodle
 
-[MIT](LICENSE)
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+[MIT](LICENSE) - Based on work by [peancor](https://github.com/peancor/moodle-mcp-server)
+
+## 🙏 Acknowledgments
+
+- Original MCP server by [peancor](https://github.com/peancor/moodle-mcp-server)
+- [Model Context Protocol](https://modelcontextprotocol.io/) by Anthropic
+- [Moodle](https://moodle.org/) LMS community
