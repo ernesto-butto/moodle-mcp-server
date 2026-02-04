@@ -1,5 +1,5 @@
 {
-  "name": "moodle-mcp-server",
+  "name": "@ernesto-butto/moodle-mcp-server",
   "version": "0.2.0",
   "description": "MCP server for Moodle LMS with multi-course support - enables AI assistants to manage courses, students, assignments, and quizzes",
   "private": false,
