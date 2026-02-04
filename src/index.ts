@@ -8,6 +8,11 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import axios from 'axios';
+import { createRequire } from 'module';
+
+// Read version from package.json so it stays in sync automatically
+const require = createRequire(import.meta.url);
+const { version: PACKAGE_VERSION } = require('../package.json');
 
 // Environment variable configuration
 const MOODLE_API_URL = process.env.MOODLE_API_URL;
@@ -101,7 +106,7 @@ class MoodleMcpServer {
     this.server = new Server(
       {
         name: 'moodle-mcp-server',
-        version: '0.2.0', // Updated version for multi-course support
+        version: PACKAGE_VERSION,
       },
       {
         capabilities: {
