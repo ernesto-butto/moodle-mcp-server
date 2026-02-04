@@ -1,12 +1,15 @@
 # Moodle MCP Server (Multi-Course Edition)
 
+[![npm](https://img.shields.io/npm/v/@ernesto-butto/moodle-mcp-server)](https://www.npmjs.com/package/@ernesto-butto/moodle-mcp-server)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io/)
-[![Node.js](https://img.shields.io/badge/Node.js-v14+-green)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-v18+-green)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 An enhanced [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI assistants like Claude to interact with Moodle LMS. **This fork adds multi-course support**, allowing you to manage multiple courses from a single MCP server.
 
 > 🍴 This is an enhanced fork of [peancor/moodle-mcp-server](https://github.com/peancor/moodle-mcp-server) with significant improvements.
+
+> ✅ **Tested with Moodle 4.5** (Build: 20241007). The built-in "Moodle mobile web service" in Moodle 4.x includes all the API functions this server needs — no custom service required.
 
 ## ✨ What's New in This Fork
 
@@ -62,30 +65,30 @@ All course-specific tools accept an optional `courseId` parameter:
 
 ## 📋 Requirements
 
-- **Node.js** v14 or higher
+- **Node.js** v18 or higher
 - **Moodle API token** with appropriate permissions
 - **Moodle** instance with web services enabled
 
 ## 🚀 Installation
 
-### 1. Clone this repository
+### Quick Start (via npx)
+
+No installation needed — Claude Desktop and Claude Code can run the server directly from npm:
+
+```
+npx -y @ernesto-butto/moodle-mcp-server
+```
+
+### From Source (for development)
 
 ```bash
 git clone https://github.com/ernesto-butto/moodle-mcp-server.git
 cd moodle-mcp-server
-```
-
-### 2. Install dependencies
-
-```bash
 npm install
-```
-
-### 3. Build the server
-
-```bash
 npm run build
 ```
+
+> 📖 **For teachers:** See the [Setup Guide (EN/ES)](SETUP_GUIDE.md) for step-by-step instructions in English and Spanish.
 
 ## ⚙️ Configuration
 
@@ -97,21 +100,21 @@ npm run build
 | `MOODLE_API_TOKEN` | ✅ Yes | API token for authentication |
 | `MOODLE_COURSE_ID` | ❌ No | Default course ID (optional — use `list_courses` to discover courses dynamically) |
 
-### For Claude Code (Linux/WSL)
+### For Claude Desktop (Windows/macOS)
 
-Add to your project's `.mcp.json`:
+Edit your config file:
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 
-**Option A: With default course** (simpler for single-course use)
 ```json
 {
   "mcpServers": {
     "moodle": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["/path/to/moodle-mcp-server/build/index.js"],
+      "command": "npx",
+      "args": ["-y", "@ernesto-butto/moodle-mcp-server"],
       "env": {
         "MOODLE_API_URL": "https://your-moodle.com/webservice/rest/server.php",
-        "MOODLE_API_TOKEN": "${MOODLE_API_TOKEN}",
+        "MOODLE_API_TOKEN": "your_token_here",
         "MOODLE_COURSE_ID": "4"
       }
     }
@@ -119,17 +122,23 @@ Add to your project's `.mcp.json`:
 }
 ```
 
-**Option B: Without default course** (multi-course workflows)
+> 💡 **Tip:** You can omit `MOODLE_COURSE_ID` entirely if you prefer to always specify courses dynamically using `list_courses` first.
+
+### For Claude Code (Linux/WSL)
+
+Add to your project's `.mcp.json`:
+
 ```json
 {
   "mcpServers": {
     "moodle": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/path/to/moodle-mcp-server/build/index.js"],
+      "command": "npx",
+      "args": ["-y", "@ernesto-butto/moodle-mcp-server"],
       "env": {
         "MOODLE_API_URL": "https://your-moodle.com/webservice/rest/server.php",
-        "MOODLE_API_TOKEN": "${MOODLE_API_TOKEN}"
+        "MOODLE_API_TOKEN": "${MOODLE_API_TOKEN}",
+        "MOODLE_COURSE_ID": "4"
       }
     }
   }
@@ -143,106 +152,40 @@ echo 'export MOODLE_API_TOKEN="your_token_here"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### For Claude Desktop (Windows)
-
-Edit `%APPDATA%\Claude\claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "moodle": {
-      "command": "node",
-      "args": ["C:\\Users\\YourName\\moodle-mcp-server\\build\\index.js"],
-      "env": {
-        "MOODLE_API_URL": "https://your-moodle.com/webservice/rest/server.php",
-        "MOODLE_API_TOKEN": "your_token_here",
-        "MOODLE_COURSE_ID": "4"
-      }
-    }
-  }
-}
-```
-
-> 💡 **Tip:** You can omit `MOODLE_COURSE_ID` entirely if you prefer to always specify courses dynamically using `list_courses` first.
-
-### For Claude Desktop (macOS)
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "moodle": {
-      "command": "node",
-      "args": ["/Users/YourName/moodle-mcp-server/build/index.js"],
-      "env": {
-        "MOODLE_API_URL": "https://your-moodle.com/webservice/rest/server.php",
-        "MOODLE_API_TOKEN": "your_token_here",
-        "MOODLE_COURSE_ID": "4"
-      }
-    }
-  }
-}
-```
-
-> 💡 **Tip:** You can omit `MOODLE_COURSE_ID` entirely if you prefer to always specify courses dynamically using `list_courses` first.
-
 ## 🔑 Getting a Moodle API Token
-
-### Option 1: Use Mobile Web Service (Easiest)
 
 1. Log in to Moodle as admin
 2. Go to **Site Administration → Server → Web services → External services**
-3. Ensure **"Moodle mobile web service"** is enabled
+3. Ensure **"Moodle mobile web service"** is enabled (it includes all required API functions)
 4. Go to **Site Administration → Server → Web services → Manage tokens**
-5. Click **Create token**, select your user and the mobile web service
+5. Click **Create token**, select the teacher's user account and the **"Moodle mobile web service"**
 6. Copy the token
 
-### Option 2: Create Custom Service (More Control)
-
-1. Go to **Site Administration → Server → Web services → External services**
-2. Click **Add** under Custom services
-3. Add these functions:
-   - `core_course_get_courses`
-   - `core_course_get_contents`
-   - `core_enrol_get_enrolled_users`
-   - `mod_assign_get_assignments`
-   - `mod_assign_get_submissions`
-   - `mod_assign_save_grade`
-   - `mod_quiz_get_quizzes_by_courses`
-   - `mod_quiz_get_user_best_grade`
-4. Create a token for this service
+> 💡 **That's it.** In Moodle 4.x the mobile web service already covers all the functions this server uses. No need to create a custom service or add individual functions.
 
 ### Finding Your Course ID
 
-**Option 1: Use `list_courses`** (Recommended)
+Simply ask Claude: *"List all my Moodle courses"* — the `list_courses` tool will return all courses with their IDs.
 
-Simply ask Claude: *"List all my Moodle courses"* — the server will return all courses with their IDs.
+You can also find it in the URL when visiting a course: `https://your-moodle.com/course/view.php?id=4` — the ID is `4`.
 
-**Option 2: From URL**
+<details>
+<summary><strong>Advanced: Custom Service (for minimal permissions)</strong></summary>
 
-Navigate to your course in Moodle and look at the URL:
-```
-https://your-moodle.com/course/view.php?id=4
-                                          ↑
-                                    Course ID
-```
+If your admin prefers to create a custom service with only the required functions instead of using the mobile web service, add these functions:
 
-## 🧪 Development
+- `core_course_get_courses`
+- `core_course_get_contents`
+- `core_enrol_get_enrolled_users`
+- `mod_assign_get_assignments`
+- `mod_assign_get_submissions`
+- `mod_assign_get_grades`
+- `mod_assign_get_submission_status`
+- `mod_assign_save_grade`
+- `mod_quiz_get_quizzes_by_courses`
+- `mod_quiz_get_user_best_grade`
 
-### Watch mode (auto-rebuild)
-
-```bash
-npm run watch
-```
-
-### Debug with MCP Inspector
-
-```bash
-npm run inspector
-```
-
-This opens a browser-based debugging interface.
+</details>
 
 ## 💡 Example Usage
 
@@ -261,6 +204,22 @@ Once configured, you can ask Claude:
 3. **Minimal permissions** - Only enable required web service functions
 4. **Rotate tokens** - Regenerate tokens periodically
 5. **Set expiration** - Use token expiration dates in Moodle
+
+## 🧪 Development
+
+### Watch mode (auto-rebuild)
+
+```bash
+npm run watch
+```
+
+### Debug with MCP Inspector
+
+```bash
+npm run inspector
+```
+
+This opens a browser-based debugging interface.
 
 ## 🤝 Contributing
 
