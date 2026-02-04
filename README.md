@@ -11,7 +11,7 @@ An enhanced [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) ser
 
 > ✅ **Tested with Moodle 4.5** (Build: 20241007). The built-in "Moodle mobile web service" in Moodle 4.x includes all the API functions this server needs — no custom service required.
 
-> 📖 **New to this?** See the [Setup Guide (EN/ES)](SETUP_GUIDE.md) for step-by-step instructions in English and Spanish.
+> 📖 **Teacher or Moodle admin?** You don't need anything on this page. Follow the [Setup Guide (EN/ES)](SETUP_GUIDE.md) for simple step-by-step instructions in English and Spanish.
 
 ## ✨ What's New in This Fork
 
