@@ -11,6 +11,8 @@ An enhanced [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) ser
 
 > ✅ **Tested with Moodle 4.5** (Build: 20241007). The built-in "Moodle mobile web service" in Moodle 4.x includes all the API functions this server needs — no custom service required.
 
+> 📖 **New to this?** See the [Setup Guide (EN/ES)](SETUP_GUIDE.md) for step-by-step instructions in English and Spanish.
+
 ## ✨ What's New in This Fork
 
 | Feature | Original | This Fork |
@@ -71,34 +73,7 @@ All course-specific tools accept an optional `courseId` parameter:
 
 ## 🚀 Installation
 
-### Quick Start (via npx)
-
-No installation needed — Claude Desktop and Claude Code can run the server directly from npm:
-
-```
-npx -y @ernesto-butto/moodle-mcp-server
-```
-
-### From Source (for development)
-
-```bash
-git clone https://github.com/ernesto-butto/moodle-mcp-server.git
-cd moodle-mcp-server
-npm install
-npm run build
-```
-
-> 📖 **For teachers:** See the [Setup Guide (EN/ES)](SETUP_GUIDE.md) for step-by-step instructions in English and Spanish.
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MOODLE_API_URL` | ✅ Yes | Your Moodle web service endpoint |
-| `MOODLE_API_TOKEN` | ✅ Yes | API token for authentication |
-| `MOODLE_COURSE_ID` | ❌ No | Default course ID (optional — use `list_courses` to discover courses dynamically) |
+No installation needed — Claude Desktop and Claude Code run the server directly from npm via `npx`.
 
 ### For Claude Desktop (Windows/macOS)
 
@@ -150,6 +125,23 @@ Then set your token as an environment variable:
 ```bash
 echo 'export MOODLE_API_TOKEN="your_token_here"' >> ~/.bashrc
 source ~/.bashrc
+```
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MOODLE_API_URL` | ✅ Yes | Your Moodle web service endpoint |
+| `MOODLE_API_TOKEN` | ✅ Yes | API token for authentication |
+| `MOODLE_COURSE_ID` | ❌ No | Default course ID (optional — use `list_courses` to discover courses dynamically) |
+
+### From Source (for development)
+
+```bash
+git clone https://github.com/ernesto-butto/moodle-mcp-server.git
+cd moodle-mcp-server
+npm install
+npm run build
 ```
 
 ## 🔑 Getting a Moodle API Token
