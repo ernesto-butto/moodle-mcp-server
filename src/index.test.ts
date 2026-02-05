@@ -392,4 +392,63 @@ describe('MoodleMcpServer', () => {
       );
     });
   });
+
+  // ── Moodle API Error Response Handling (Issue #4) ──────────────────
+
+  describe('Moodle API error response handling', () => {
+    it('throws McpError when get_course_contents receives error object instead of array', async () => {
+      // Moodle returns this when courseId doesn't exist or user lacks permissions
+      mockAxios.onGet().reply(200, {
+        exception: 'moodle_exception',
+        errorcode: 'invalidrecord',
+        message: 'Can not find data record in database table course.',
+      });
+
+      await expect(callTool('get_course_contents', { courseId: 99999 })).rejects.toThrow(
+        'Can not find data record in database table course.'
+      );
+    });
+
+    it('throws McpError when list_courses receives error object instead of array', async () => {
+      mockAxios.onGet().reply(200, {
+        exception: 'webservice_access_exception',
+        errorcode: 'accessexception',
+        message: 'Access control exception',
+      });
+
+      await expect(callTool('list_courses')).rejects.toThrow(
+        'Access control exception'
+      );
+    });
+
+    it('throws McpError when get_students receives error object instead of array', async () => {
+      mockAxios.onGet().reply(200, {
+        exception: 'moodle_exception',
+        errorcode: 'invalidrecord',
+        message: 'Can not find data record in database table course.',
+      });
+
+      await expect(callTool('get_students', { courseId: 99999 })).rejects.toThrow(
+        'Can not find data record in database table course.'
+      );
+    });
+
+    it('handles Moodle error with only errorcode field', async () => {
+      mockAxios.onGet().reply(200, {
+        errorcode: 'courseidnumberexists',
+      });
+
+      await expect(callTool('list_courses')).rejects.toThrow(
+        'courseidnumberexists'
+      );
+    });
+
+    it('handles unexpected non-array response without error fields', async () => {
+      mockAxios.onGet().reply(200, { unexpected: 'response' });
+
+      await expect(callTool('list_courses')).rejects.toThrow(
+        'expected array'
+      );
+    });
+  });
 });

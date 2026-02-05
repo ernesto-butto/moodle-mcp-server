@@ -149,6 +149,27 @@ class MoodleMcpServer {
     );
   }
 
+  /**
+   * Helper to validate Moodle API responses that should return arrays.
+   * Moodle returns error objects like { exception, errorcode, message } instead of arrays when something goes wrong.
+   */
+  private validateArrayResponse(data: any, context: string): void {
+    if (!Array.isArray(data)) {
+      // Check if it's a Moodle error object
+      if (data && typeof data === 'object' && (data.exception || data.errorcode || data.message)) {
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Moodle API error in ${context}: ${data.message || data.errorcode || 'Unknown error'}`
+        );
+      }
+      // Generic non-array response
+      throw new McpError(
+        ErrorCode.InternalError,
+        `Unexpected response from Moodle API in ${context}: expected array, got ${typeof data}`
+      );
+    }
+  }
+
   private setupToolHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
@@ -369,6 +390,9 @@ class MoodleMcpServer {
       },
     });
 
+    // Validate that we got an array response
+    this.validateArrayResponse(response.data, 'list_courses');
+
     // Filter out the site-level course (id=1) and format the response
     const courses = response.data
       .filter((course: any) => course.id !== 1) // Exclude site-level course
@@ -409,6 +433,9 @@ class MoodleMcpServer {
       },
     });
 
+    // Validate that we got an array response (Moodle returns error object for invalid course IDs)
+    this.validateArrayResponse(response.data, `get_course_contents (courseId: ${courseId})`);
+
     // Process the response to make it more readable
     const sections = response.data.map((section: any) => ({
       id: section.id,
@@ -444,6 +471,9 @@ class MoodleMcpServer {
         courseid: courseId,
       },
     });
+
+    // Validate that we got an array response
+    this.validateArrayResponse(response.data, `get_students (courseId: ${courseId})`);
 
     const students = response.data
       .filter((user: any) => user.roles?.some((role: any) => role.shortname === 'student'))
