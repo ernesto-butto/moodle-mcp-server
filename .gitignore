@@ -4,5 +4,4 @@ build/
 .env*
 .npmrc
 CLAUDE.md
-.claude/
 coverage/
