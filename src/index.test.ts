@@ -64,7 +64,7 @@ describe('MoodleMcpServer', () => {
   // ── Tool Registration ──────────────────────────────────────────────
 
   describe('tool registration', () => {
-    it('registers all 9 tools', async () => {
+    it('registers all 13 tools', async () => {
       const result = await listTools();
       const names = result.tools.map((t: any) => t.name);
       expect(names).toEqual([
@@ -77,6 +77,10 @@ describe('MoodleMcpServer', () => {
         'provide_feedback',
         'get_submission_content',
         'get_quiz_grade',
+        'get_forums',
+        'get_forum_discussions',
+        'create_forum_discussion',
+        'reply_to_forum_discussion',
       ]);
     });
   });
@@ -370,6 +374,121 @@ describe('MoodleMcpServer', () => {
     it('validates required params', async () => {
       await expect(callTool('get_quiz_grade', { studentId: 1 })).rejects.toThrow(
         'Student ID and Quiz ID are required'
+      );
+    });
+  });
+
+  // ── get_forums ────────────────────────────────────────────────────
+
+  describe('get_forums', () => {
+    it('returns forums with HTML-stripped intro and ISO timestamps', async () => {
+      mockAxios.onGet().reply(200, [
+        {
+          id: 1, course: 5, type: 'general', name: 'Announcements',
+          intro: '<p>Welcome to the <b>course</b> forum</p>',
+          duedate: 1700000000, cutoffdate: 1700100000, timemodified: 1700200000,
+        },
+        {
+          id: 2, course: 5, type: 'eachuser', name: 'Student Blog',
+          intro: '', duedate: 0, cutoffdate: 0, timemodified: 1700300000,
+        },
+      ]);
+
+      const result = await callTool('get_forums', { courseId: 5 });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.courseId).toBe('5');
+      expect(data.forums).toHaveLength(2);
+      expect(data.forums[0].name).toBe('Announcements');
+      expect(data.forums[0].intro).toBe('Welcome to the course forum');
+      expect(data.forums[0].duedate).toBe(new Date(1700000000 * 1000).toISOString());
+      expect(data.forums[1].duedate).toBeNull();
+    });
+
+    it('throws McpError when Moodle returns error object instead of array', async () => {
+      mockAxios.onGet().reply(200, {
+        exception: 'moodle_exception',
+        errorcode: 'invalidrecord',
+        message: 'Can not find data record in database table course.',
+      });
+
+      await expect(callTool('get_forums', { courseId: 99999 })).rejects.toThrow(
+        'Can not find data record in database table course.'
+      );
+    });
+  });
+
+  // ── get_forum_discussions ─────────────────────────────────────────
+
+  describe('get_forum_discussions', () => {
+    it('returns discussions with ISO timestamps', async () => {
+      mockAxios.onGet().reply(200, {
+        discussions: [
+          {
+            id: 10, discussion: 100, name: 'Welcome', subject: 'Welcome',
+            message: '<p>Hello everyone</p>', userfullname: 'Alice Smith',
+            userid: 1, created: 1700000000, modified: 1700100000,
+            numreplies: 3, pinned: false, locked: false, canreply: true,
+          },
+        ],
+      });
+
+      const result = await callTool('get_forum_discussions', { forumId: 1 });
+      const data = JSON.parse(result.content[0].text);
+
+      expect(data.forumId).toBe(1);
+      expect(data.discussions).toHaveLength(1);
+      expect(data.discussions[0].subject).toBe('Welcome');
+      expect(data.discussions[0].created).toBe(new Date(1700000000 * 1000).toISOString());
+      expect(data.discussions[0].numreplies).toBe(3);
+    });
+
+    it('validates required forumId param', async () => {
+      await expect(callTool('get_forum_discussions', {})).rejects.toThrow(
+        'Forum ID is required'
+      );
+    });
+  });
+
+  // ── create_forum_discussion ───────────────────────────────────────
+
+  describe('create_forum_discussion', () => {
+    it('returns success message with discussion ID', async () => {
+      mockAxios.onGet().reply(200, { discussionid: 123 });
+
+      const result = await callTool('create_forum_discussion', {
+        forumId: 1, subject: 'Feedback Thread', message: '<p>Great work!</p>',
+      });
+
+      expect(result.content[0].text).toContain('Discussion created successfully');
+      expect(result.content[0].text).toContain('forum 1');
+      expect(result.content[0].text).toContain('Discussion ID: 123');
+    });
+
+    it('validates required params', async () => {
+      await expect(callTool('create_forum_discussion', { forumId: 1 })).rejects.toThrow(
+        'Forum ID, subject, and message are required'
+      );
+    });
+  });
+
+  // ── reply_to_forum_discussion ─────────────────────────────────────
+
+  describe('reply_to_forum_discussion', () => {
+    it('returns success message with post ID', async () => {
+      mockAxios.onGet().reply(200, { postid: 456 });
+
+      const result = await callTool('reply_to_forum_discussion', {
+        postId: 10, message: '<p>Thanks for your submission.</p>',
+      });
+
+      expect(result.content[0].text).toContain('Reply posted successfully');
+      expect(result.content[0].text).toContain('Post ID: 456');
+    });
+
+    it('validates required params', async () => {
+      await expect(callTool('reply_to_forum_discussion', { postId: 10 })).rejects.toThrow(
+        'Post ID and message are required'
       );
     });
   });
