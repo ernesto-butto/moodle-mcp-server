@@ -64,3 +64,30 @@ export interface QuizGradeResponse {
   hasgrade: boolean;
   grade?: string;
 }
+
+export interface Forum {
+  id: number;
+  course: number;
+  type: string;
+  name: string;
+  intro: string;
+  duedate: number;
+  cutoffdate: number;
+  timemodified: number;
+}
+
+export interface ForumDiscussion {
+  id: number;
+  name: string;
+  discussion: number;
+  userid: number;
+  subject: string;
+  message: string;
+  created: number;
+  modified: number;
+  numreplies: number;
+  pinned: boolean;
+  locked: boolean;
+  canreply: boolean;
+  userfullname: string;
+}

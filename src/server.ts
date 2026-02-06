@@ -15,6 +15,7 @@ import { listCourses, getCourseContents } from './tools/courses.js';
 import { getStudents } from './tools/students.js';
 import { getAssignments, getSubmissions, provideFeedback, getSubmissionContent } from './tools/assignments.js';
 import { getQuizzes, getQuizGrade } from './tools/quizzes.js';
+import { getForums, getForumDiscussions, createForumDiscussion, replyToForumDiscussion } from './tools/forums.js';
 
 const require = createRequire(import.meta.url);
 const { version: PACKAGE_VERSION } = require('../package.json');
@@ -75,6 +76,14 @@ export class MoodleMcpServer {
             return await getSubmissionContent(this.axiosInstance, request.params.arguments);
           case 'get_quiz_grade':
             return await getQuizGrade(this.axiosInstance, request.params.arguments);
+          case 'get_forums':
+            return await getForums(this.axiosInstance, request.params.arguments);
+          case 'get_forum_discussions':
+            return await getForumDiscussions(this.axiosInstance, request.params.arguments);
+          case 'create_forum_discussion':
+            return await createForumDiscussion(this.axiosInstance, request.params.arguments);
+          case 'reply_to_forum_discussion':
+            return await replyToForumDiscussion(this.axiosInstance, request.params.arguments);
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
