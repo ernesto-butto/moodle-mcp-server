@@ -62,6 +62,10 @@ After restarting Claude Desktop, you should see a hammer icon (tools) at the bot
 - **get_quizzes** — Get quizzes
 - **get_quiz_grade** — Get a student's quiz grade
 - **provide_feedback** — Grade and give feedback on assignments
+- **get_forums** — List forums in a course
+- **get_forum_discussions** — Browse discussions in a forum
+- **create_forum_discussion** — Create a new discussion thread
+- **reply_to_forum_discussion** — Reply to an existing forum post
 
 Try asking Claude: *"List my Moodle courses"*
 
@@ -120,5 +124,9 @@ Despues de reiniciar Claude Desktop, deberias ver un icono de martillo (herramie
 - **get_quizzes** — Obtener cuestionarios
 - **get_quiz_grade** — Obtener la calificacion de un estudiante en un cuestionario
 - **provide_feedback** — Calificar y dar retroalimentacion en tareas
+- **get_forums** — Listar foros en un curso
+- **get_forum_discussions** — Ver discusiones en un foro
+- **create_forum_discussion** — Crear un nuevo hilo de discusion
+- **reply_to_forum_discussion** — Responder a una publicacion en un foro
 
 Prueba preguntandole a Claude: *"Lista mis cursos de Moodle"*
