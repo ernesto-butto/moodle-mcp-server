@@ -230,6 +230,32 @@ npm run inspector
 
 This opens a browser-based debugging interface.
 
+### Testing
+
+**Unit tests** — run the full Vitest suite with mocked Moodle API responses (no credentials needed):
+
+```bash
+npm test
+```
+
+**MCP integration test** — spawns the server via the MCP protocol over stdio (same path as Claude Desktop) and validates tool registration, param validation, and optionally live API calls:
+
+```bash
+# Schema + validation only (no credentials needed)
+npm run build && node test-mcp.mjs
+
+# Against a live Moodle instance
+MOODLE_API_URL="https://your-moodle.com/webservice/rest/server.php" \
+MOODLE_API_TOKEN="your-token" \
+MOODLE_COURSE_ID="4" \
+node test-mcp.mjs
+```
+
+The integration test checks:
+1. All tools register with correct names and required params
+2. Param validation throws correct errors for missing fields
+3. (With credentials) Read tools return data from the live Moodle instance
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
