@@ -21,6 +21,7 @@ An enhanced [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) ser
 | List all courses | ❌ Not available | ✅ `list_courses` tool |
 | View course contents | ❌ Not available | ✅ `get_course_contents` tool |
 | Admin/Teacher access | ❌ Enrollment-based only | ✅ Works with capability-based access |
+| Forum interaction | ❌ Not available | ✅ Browse, post, and reply to forums |
 
 ## 🛠️ Available Tools
 
@@ -48,6 +49,14 @@ An enhanced [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) ser
 |------|-------------|
 | `get_quizzes` | Lists all quizzes in a course |
 | `get_quiz_grade` | Gets a student's grade for a specific quiz |
+
+### Forum Management
+| Tool | Description |
+|------|-------------|
+| `get_forums` | Lists all forums in a course |
+| `get_forum_discussions` | Lists discussions with authors, reply counts, and post IDs |
+| `create_forum_discussion` | Creates a new discussion thread in a forum (HTML format) |
+| `reply_to_forum_discussion` | Replies to an existing forum post (HTML format) |
 
 ### Multi-Course Support
 
@@ -176,6 +185,10 @@ If your admin prefers to create a custom service with only the required function
 - `mod_assign_save_grade`
 - `mod_quiz_get_quizzes_by_courses`
 - `mod_quiz_get_user_best_grade`
+- `mod_forum_get_forums_by_courses`
+- `mod_forum_get_forum_discussions`
+- `mod_forum_add_discussion`
+- `mod_forum_add_discussion_post`
 
 </details>
 
@@ -188,6 +201,10 @@ Once configured, you can ask Claude:
 - *"What assignments are in Unidad 3?"*
 - *"Get the course contents for course 10"*
 - *"Show quiz grades for student 42 in quiz 15"*
+- *"List the forums in course 5"*
+- *"Show discussions in forum 3"*
+- *"Create a new discussion in forum 3 with the subject 'Week 5 Feedback'"*
+- *"Reply to post 10 with my review of the student's work"*
 
 ## 🔒 Security Best Practices
 
