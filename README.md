@@ -206,14 +206,6 @@ Once configured, you can ask Claude:
 - *"Create a new discussion in forum 3 with the subject 'Week 5 Feedback'"*
 - *"Reply to post 10 with my review of the student's work"*
 
-## 🔒 Security Best Practices
-
-1. **Never commit tokens** - Use environment variables
-2. **Use dedicated accounts** - Create a Moodle user for API access
-3. **Minimal permissions** - Only enable required web service functions
-4. **Rotate tokens** - Regenerate tokens periodically
-5. **Set expiration** - Use token expiration dates in Moodle
-
 ## 🧪 Development
 
 ### Watch mode (auto-rebuild)
